@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: health-manage-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: health-manage
+  template:
+    metadata:
+      labels:
+        name: health-manage
+    spec:
+      containers:
+      - name: health-manage
+        image: registry.cn-hangzhou.aliyuncs.com/ginger/health-manage:1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 1521
+        env:
+        - name: spring_profile
+          value: online
+        - name: jdbc_url
+          value: "jdbc:mysql://172.17.0.1:3306/health_manage?characterEncoding=UTF-8&autoReconnect=true&allowMultiQueries=true&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8"
+        - name: db_username
+          value: healthmanage
+        - name: db_password
+          value: healthmanage
+        volumeMounts:
+          - mountPath: /app/logs
+            name: hm-logs
+      volumes:
+        - name: hm-logs
+          hostPath:
+            path: /home/centos/Library/k8s/health-manage/logs
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: health-manage-service
+spec:
+  selector:
+    name: health-manage
+  ports:
+  - port: 80
+    targetPort: 1521
+    protocol: TCP
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: health-manage-ingress
+spec:
+  rules:
+  - host: beidou.com
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: health-manage-service
+          servicePort: 80
+
